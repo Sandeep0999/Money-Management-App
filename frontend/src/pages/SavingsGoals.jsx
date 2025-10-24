@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Plus, Target, TrendingUp } from "lucide-react"
+import { Plus, Target, TrendingUp, Edit2 } from "lucide-react"
 import { toast } from "react-toastify"
 import DeleteModal from "../components/DeleteModal"
 
@@ -9,7 +9,9 @@ export default function SavingsGoals() {
   const [goals, setGoals] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null })
+  const [updateModal, setUpdateModal] = useState({ isOpen: false, id: null, currentAmount: "" })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     targetAmount: "",
@@ -29,6 +31,24 @@ export default function SavingsGoals() {
     if (savedGoals) {
       setGoals(JSON.parse(savedGoals))
     }
+  }
+
+  const checkMilestones = (oldProgress, newProgress, goalName) => {
+    const milestones = [25, 50, 75, 90, 100]
+
+    milestones.forEach((milestone) => {
+      if (oldProgress < milestone && newProgress >= milestone) {
+        if (milestone === 100) {
+          toast.success(`🎉 Congratulations! You've completed your goal: ${goalName}!`, {
+            autoClose: 5000,
+          })
+        } else {
+          toast.info(`🎯 ${goalName} is ${milestone}% complete!`, {
+            autoClose: 3000,
+          })
+        }
+      }
+    })
   }
 
   const handleSubmit = (e) => {
@@ -52,6 +72,40 @@ export default function SavingsGoals() {
     toast.success("Savings goal created successfully!")
     setFormData({ name: "", targetAmount: "", currentAmount: "", deadline: "", category: "Travel" })
     setShowForm(false)
+  }
+
+  const handleUpdateProgress = async () => {
+    try {
+      setIsUpdating(true)
+      const newAmount = Number.parseFloat(updateModal.currentAmount)
+
+      if (isNaN(newAmount) || newAmount < 0) {
+        toast.error("Please enter a valid amount")
+        return
+      }
+
+      const updatedGoals = goals.map((goal) => {
+        if (goal.id === updateModal.id) {
+          const oldProgress = (goal.currentAmount / goal.targetAmount) * 100
+          const newProgress = (newAmount / goal.targetAmount) * 100
+
+          // Check for milestone achievements
+          checkMilestones(oldProgress, newProgress, goal.name)
+
+          return { ...goal, currentAmount: newAmount }
+        }
+        return goal
+      })
+
+      setGoals(updatedGoals)
+      localStorage.setItem("savingsGoals", JSON.stringify(updatedGoals))
+      toast.success("Goal progress updated!")
+      setUpdateModal({ isOpen: false, id: null, currentAmount: "" })
+    } catch (error) {
+      toast.error("Error updating goal")
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -220,12 +274,22 @@ export default function SavingsGoals() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm mb-4">
                     <TrendingUp size={16} className={daysLeft > 0 ? "text-green-600" : "text-red-600"} />
                     <span className={daysLeft > 0 ? "text-green-600" : "text-red-600"}>
                       {daysLeft > 0 ? `${daysLeft} days left` : "Deadline passed"}
                     </span>
                   </div>
+
+                  <button
+                    onClick={() =>
+                      setUpdateModal({ isOpen: true, id: goal.id, currentAmount: goal.currentAmount.toString() })
+                    }
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition card-hover font-medium"
+                  >
+                    <Edit2 size={16} />
+                    Update Progress
+                  </button>
                 </div>
               )
             })}
@@ -246,6 +310,40 @@ export default function SavingsGoals() {
         onCancel={() => setDeleteModal({ isOpen: false, id: null })}
         isLoading={isDeleting}
       />
+
+      {updateModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 animate-slide-in-up">
+            <h2 className="text-2xl font-bold text-dark mb-4">Update Goal Progress</h2>
+            <p className="text-gray-600 mb-4">Enter how much you have saved now:</p>
+
+            <input
+              type="number"
+              value={updateModal.currentAmount}
+              onChange={(e) => setUpdateModal({ ...updateModal, currentAmount: e.target.value })}
+              placeholder="0.00"
+              step="0.01"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary smooth-transition mb-4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUpdateModal({ isOpen: false, id: null, currentAmount: "" })}
+                className="flex-1 px-4 py-2 border border-gray-300 text-dark rounded-lg hover:bg-gray-100 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateProgress}
+                disabled={isUpdating}
+                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition font-medium disabled:opacity-50"
+              >
+                {isUpdating ? "Updating..." : "Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
