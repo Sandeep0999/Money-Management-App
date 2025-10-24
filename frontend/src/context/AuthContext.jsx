@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect } from "react"
 import axios from "axios"
-
+const API_URL = import.meta.env.VITE_API_URL;
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get("/api/auth/me")
+      const response = await axios.get(`${API_URL}/auth/me`)
       setUser(response.data.user)
     } catch (error) {
       console.error("Failed to fetch user:", error)
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (email, password) => {
-    const response = await axios.post("/api/auth/login", { email, password })
+    const response = await axios.post(`${API_URL}/auth/login`, { email, password })
     const { token, user } = response.data
     localStorage.setItem("token", token)
     setToken(token)
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signup = async (name, email, password, confirmPassword) => {
-    const response = await axios.post("/api/auth/signup", {
+    const response = await axios.post(`${API_URL}/auth/signup`, {
       name,
       email,
       password,
